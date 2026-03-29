@@ -8,38 +8,39 @@ app.use(cors());
 app.use(express.json());
 
 const sessions = {};
-const GEMINI_API_KEY = 'AIzaSyDdDxzWiWAlqUaBq35vBxLJyGKb8wwuWss';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
+const OPENAI_API_KEY = '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';
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 async function generateAIResponse(userMessage) {
     try {
         const response = await axios.post(
-            `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+            OPENAI_API_URL,
             {
-                contents: [
+                model: 'gpt-3.5-turbo',
+                messages: [
                     {
-                        parts: [
-                            {
-                                text: userMessage
-                            }
-                        ]
+                        role: 'user',
+                        content: userMessage
                     }
-                ]
+                ],
+                max_tokens: 500,
+                temperature: 0.7
             },
             {
                 headers: {
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
                     'Content-Type': 'application/json'
                 }
             }
         );
 
-        if (response.data.candidates && response.data.candidates[0].content.parts[0].text) {
-            return response.data.candidates[0].content.parts[0].text;
+        if (response.data.choices && response.data.choices[0].message.content) {
+            return response.data.choices[0].message.content;
         } else {
             return "I couldn't generate a response. Please try again.";
         }
     } catch (error) {
-        console.error('Gemini API Error:', error.response?.status, error.message);
+        console.error('OpenAI API Error:', error.response?.status, error.message);
         return "Sorry, I encountered an error. Please try again later.";
     }
 }
@@ -189,5 +190,5 @@ app.use((req, res) => {
 app.listen(PORT, () => {
     console.log(`Elite AI Chatbot Server Running! 🚀`);
     console.log(`Server is live on port ${PORT}`);
-    console.log(`Using Google Gemini API for AI responses`);
+    console.log(`Using OpenAI API for AI responses`);
 });
