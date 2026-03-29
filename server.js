@@ -9,7 +9,7 @@ app.use(express.json());
 
 const sessions = {};
 const GEMINI_API_KEY = 'AIzaSyDdDxzWiWAlqUaBq35vBxLJyGKb8wwuWss';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
 
 async function generateAIResponse(userMessage) {
     try {
@@ -39,7 +39,7 @@ async function generateAIResponse(userMessage) {
             return "I couldn't generate a response. Please try again.";
         }
     } catch (error) {
-        console.error('Gemini API Error:', error.message);
+        console.error('Gemini API Error:', error.response?.status, error.message);
         return "Sorry, I encountered an error. Please try again later.";
     }
 }
