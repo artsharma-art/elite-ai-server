@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 const sessions = {};
-const GEMINI_API_KEY = 'AIzaSyArW1f_ETkTr6ZThy_BQ-wyLlsQJO3mSJs';
+const GEMINI_API_KEY = 'AIzaSyDdDxzWiWAlqUaBq35vBxLJyGKb8wwuWss';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
 async function generateAIResponse(userMessage) {
