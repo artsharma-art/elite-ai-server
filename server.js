@@ -8,39 +8,44 @@ app.use(cors());
 app.use(express.json());
 
 const sessions = {};
-const OPENAI_API_KEY = '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';
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
+
+if (!CLAUDE_API_KEY) {
+    console.error('ERROR: CLAUDE_API_KEY environment variable is not set!');
+    process.exit(1);
+}
 
 async function generateAIResponse(userMessage) {
     try {
         const response = await axios.post(
-            OPENAI_API_URL,
+            CLAUDE_API_URL,
             {
-                model: 'gpt-3.5-turbo',
+                model: 'claude-3-5-sonnet-20241022',
+                max_tokens: 1024,
                 messages: [
                     {
                         role: 'user',
                         content: userMessage
                     }
-                ],
-                max_tokens: 500,
-                temperature: 0.7
+                ]
             },
             {
                 headers: {
-                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                    'x-api-key': CLAUDE_API_KEY,
+                    'anthropic-version': '2023-06-01',
                     'Content-Type': 'application/json'
                 }
             }
         );
 
-        if (response.data.choices && response.data.choices[0].message.content) {
-            return response.data.choices[0].message.content;
+        if (response.data.content && response.data.content[0].text) {
+            return response.data.content[0].text;
         } else {
             return "I couldn't generate a response. Please try again.";
         }
     } catch (error) {
-        console.error('OpenAI API Error:', error.response?.status, error.message);
+        console.error('Claude API Error:', error.response?.status, error.message);
         return "Sorry, I encountered an error. Please try again later.";
     }
 }
@@ -190,5 +195,5 @@ app.use((req, res) => {
 app.listen(PORT, () => {
     console.log(`Elite AI Chatbot Server Running! 🚀`);
     console.log(`Server is live on port ${PORT}`);
-    console.log(`Using OpenAI API for AI responses`);
+    console.log(`Using Claude API for AI responses`);
 });
