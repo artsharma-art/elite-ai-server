@@ -18,6 +18,9 @@ if (!CLAUDE_API_KEY) {
 
 async function generateAIResponse(userMessage) {
     try {
+        console.log('Sending request to Claude API...');
+        console.log('API Key exists:', !!CLAUDE_API_KEY);
+        
         const response = await axios.post(
             CLAUDE_API_URL,
             {
@@ -35,17 +38,25 @@ async function generateAIResponse(userMessage) {
                     'x-api-key': CLAUDE_API_KEY,
                     'anthropic-version': '2023-06-01',
                     'Content-Type': 'application/json'
-                }
+                },
+                timeout: 30000
             }
         );
 
-        if (response.data.content && response.data.content[0].text) {
+        console.log('Claude API Response received successfully');
+        
+        if (response.data.content && response.data.content[0] && response.data.content[0].text) {
             return response.data.content[0].text;
         } else {
+            console.error('Unexpected response format:', response.data);
             return "I couldn't generate a response. Please try again.";
         }
     } catch (error) {
-        console.error('Claude API Error:', error.response?.status, error.message);
+        console.error('Claude API Error Details:');
+        console.error('Status:', error.response?.status);
+        console.error('Message:', error.message);
+        console.error('Response Data:', error.response?.data);
+        
         return "Sorry, I encountered an error. Please try again later.";
     }
 }
