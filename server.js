@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
+const https = require('https');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -9,56 +9,74 @@ app.use(express.json());
 
 const sessions = {};
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
 if (!CLAUDE_API_KEY) {
     console.error('ERROR: CLAUDE_API_KEY environment variable is not set!');
     process.exit(1);
 }
 
-async function generateAIResponse(userMessage) {
-    try {
-        console.log('Sending request to Claude API...');
-        console.log('API Key exists:', !!CLAUDE_API_KEY);
-        
-        const response = await axios.post(
-            CLAUDE_API_URL,
-            {
-                model: 'claude-3-5-sonnet-20241022',
-                max_tokens: 1024,
-                messages: [
-                    {
-                        role: 'user',
-                        content: userMessage
-                    }
-                ]
-            },
-            {
-                headers: {
-                    'x-api-key': CLAUDE_API_KEY,
-                    'anthropic-version': '2023-06-01',
-                    'Content-Type': 'application/json'
-                },
-                timeout: 30000
-            }
-        );
+function makeClaudeRequest(userMessage) {
+    return new Promise((resolve, reject) => {
+        const requestBody = JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1024,
+            messages: [
+                {
+                    role: 'user',
+                    content: userMessage
+                }
+            ]
+        });
 
-        console.log('Claude API Response received successfully');
+        const options = {
+            hostname: 'api.anthropic.com',
+            port: 443,
+            path: '/v1/messages',
+            method: 'POST',
+            headers: {
+                'x-api-key': CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01',
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(requestBody)
+            }
+        };
+
+        console.log('Making request to Claude API...');
         
-        if (response.data.content && response.data.content[0] && response.data.content[0].text) {
-            return response.data.content[0].text;
-        } else {
-            console.error('Unexpected response format:', response.data);
-            return "I couldn't generate a response. Please try again.";
-        }
-    } catch (error) {
-        console.error('Claude API Error Details:');
-        console.error('Status:', error.response?.status);
-        console.error('Message:', error.message);
-        console.error('Response Data:', error.response?.data);
-        
-        return "Sorry, I encountered an error. Please try again later.";
-    }
+        const req = https.request(options, (res) => {
+            let data = '';
+
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
+
+            res.on('end', () => {
+                console.log('Claude API Response Status:', res.statusCode);
+                
+                try {
+                    const jsonData = JSON.parse(data);
+                    
+                    if (res.statusCode === 200 && jsonData.content && jsonData.content[0]) {
+                        resolve(jsonData.content[0].text);
+                    } else {
+                        console.error('Claude API Error:', jsonData);
+                        reject(new Error(jsonData.error?.message || 'Unknown error from Claude API'));
+                    }
+                } catch (e) {
+                    console.error('Failed to parse Claude response:', data);
+                    reject(new Error('Failed to parse Claude API response'));
+                }
+            });
+        });
+
+        req.on('error', (error) => {
+            console.error('Request error:', error);
+            reject(error);
+        });
+
+        req.write(requestBody);
+        req.end();
+    });
 }
 
 app.get('/health', (req, res) => {
@@ -87,25 +105,32 @@ app.post('/api/chat', (req, res) => {
             timestamp: new Date()
         });
 
-        generateAIResponse(message).then(aiResponse => {
-            sessions[sessionId].messages.push({
-                role: 'ai',
-                content: aiResponse,
-                timestamp: new Date()
-            });
+        makeClaudeRequest(message)
+            .then(aiResponse => {
+                sessions[sessionId].messages.push({
+                    role: 'ai',
+                    content: aiResponse,
+                    timestamp: new Date()
+                });
 
-            sessions[sessionId].updatedAt = new Date();
+                sessions[sessionId].updatedAt = new Date();
 
-            res.json({
-                success: true,
-                reply: aiResponse,
-                sessionId: sessionId,
-                messageCount: sessions[sessionId].messages.length
+                res.json({
+                    success: true,
+                    reply: aiResponse,
+                    sessionId: sessionId,
+                    messageCount: sessions[sessionId].messages.length
+                });
+            })
+            .catch(error => {
+                console.error('Error generating response:', error.message);
+                res.json({
+                    success: true,
+                    reply: 'Sorry, I encountered an error: ' + error.message,
+                    sessionId: sessionId,
+                    messageCount: sessions[sessionId].messages.length
+                });
             });
-        }).catch(error => {
-            console.error('Error generating response:', error);
-            res.status(500).json({ success: false, error: 'Failed to generate response' });
-        });
     } catch (error) {
         console.error('Error in /api/chat:', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
