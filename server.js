@@ -18,7 +18,7 @@ if (!CLAUDE_API_KEY) {
 function makeClaudeRequest(userMessage) {
     return new Promise((resolve, reject) => {
         const requestBody = JSON.stringify({
-            model: 'claude-3-5-sonnet',
+            model: 'claude-opus-4-1',
             max_tokens: 1024,
             messages: [
                 {
@@ -41,7 +41,7 @@ function makeClaudeRequest(userMessage) {
             }
         };
 
-        console.log('Making request to Claude API with model: claude-3-5-sonnet');
+        console.log('Making request to Claude API with model: claude-opus-4-1');
         
         const req = https.request(options, (res) => {
             let data = '';
