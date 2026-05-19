@@ -1,6 +1,9 @@
- {
-  "name": "kimi-ai-support",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module"
+{
+  "version": 2,
+  "public": true,
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 30
+    }
+  }
 }
